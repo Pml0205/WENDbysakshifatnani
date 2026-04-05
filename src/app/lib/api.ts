@@ -31,12 +31,13 @@ type AppImportMetaEnv = {
   readonly VITE_EMAILJS_PUBLIC_KEY?: string;
 };
 
-const appImportMeta = import.meta as ImportMeta & { env: AppImportMetaEnv };
+const appImportMeta = import.meta as ImportMeta & { env?: AppImportMetaEnv };
+const appEnv = appImportMeta?.env ?? {};
 
-const API_BASE_URL = (appImportMeta.env.VITE_API_BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
-const EMAILJS_SERVICE_ID = appImportMeta.env.VITE_EMAILJS_SERVICE_ID;
-const EMAILJS_TEMPLATE_ID = appImportMeta.env.VITE_EMAILJS_TEMPLATE_ID;
-const EMAILJS_PUBLIC_KEY = appImportMeta.env.VITE_EMAILJS_PUBLIC_KEY;
+const API_BASE_URL = (appEnv.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+const EMAILJS_SERVICE_ID = appEnv.VITE_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = appEnv.VITE_EMAILJS_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY = appEnv.VITE_EMAILJS_PUBLIC_KEY;
 
 const hasEmailJsConfig = Boolean(EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY);
 
@@ -50,6 +51,11 @@ const parseError = async (response: Response) => {
   }
 };
 
+const buildApiUrl = (path: string) => {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return API_BASE_URL ? `${API_BASE_URL}${normalizedPath}` : normalizedPath;
+};
+
 const toAbsoluteMediaUrl = (url: string) => {
   if (!url) {
     return url;
@@ -59,11 +65,12 @@ const toAbsoluteMediaUrl = (url: string) => {
     return url;
   }
 
-  return `${API_BASE_URL}${url.startsWith('/') ? url : `/${url}`}`;
+  const normalizedPath = url.startsWith('/') ? url : `/${url}`;
+  return API_BASE_URL ? `${API_BASE_URL}${normalizedPath}` : normalizedPath;
 };
 
 export const fetchProjects = async (): Promise<WebsiteProject[]> => {
-  const response = await fetch(`${API_BASE_URL}/api/projects`, {
+  const response = await fetch(buildApiUrl('/api/projects'), {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -80,7 +87,7 @@ export const fetchProjects = async (): Promise<WebsiteProject[]> => {
 };
 
 export const fetchPortfolios = async (): Promise<WebsitePortfolio[]> => {
-  const response = await fetch(`${API_BASE_URL}/api/portfolios`, {
+  const response = await fetch(buildApiUrl('/api/portfolios'), {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -127,7 +134,7 @@ export const submitContactForm = async (payload: {
     }
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/contact`, {
+  const response = await fetch(buildApiUrl('/api/contact'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

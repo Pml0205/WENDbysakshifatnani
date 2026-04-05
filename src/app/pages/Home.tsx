@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import {
