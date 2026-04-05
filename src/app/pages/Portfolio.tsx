@@ -1,3 +1,4 @@
+import React from "react";
 import { motion } from "motion/react";
 import {
   Carousel,
@@ -6,6 +7,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "../components/ui/carousel";
+import { fetchPortfolios, WebsitePortfolio } from "../lib/api";
 
 const imageModules = import.meta.glob("../../assets/**/*.{jpg,jpeg,png,JPG,JPEG,PNG}", {
   eager: true,
@@ -64,7 +66,7 @@ export default function Portfolio() {
       grouped.set(folder, current);
     })
 
-  const categoryGroups = Array.from(grouped.entries())
+  const fallbackCategoryGroups = Array.from(grouped.entries())
     .filter(([folder]) => !excludedFolders.has(folder))
     .sort(([a], [b]) => {
       const aIndex = knownOrder.indexOf(a);
@@ -80,6 +82,41 @@ export default function Portfolio() {
       images: items.map((item) => item.img),
     }))
     .filter((group) => group.images.length > 0);
+
+  const [categoryGroups, setCategoryGroups] = React.useState(fallbackCategoryGroups);
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    const loadPortfolios = async () => {
+      try {
+        const data = await fetchPortfolios();
+
+        if (!mounted || data.length === 0) {
+          return;
+        }
+
+        const mapped = data
+          .map((portfolio: WebsitePortfolio) => ({
+            title: portfolio.title?.trim() || "Portfolio",
+            images: Array.isArray(portfolio.images) ? portfolio.images.filter(Boolean) : [],
+          }))
+          .filter((group) => group.images.length > 0);
+
+        if (mapped.length > 0) {
+          setCategoryGroups(mapped);
+        }
+      } catch {
+        // Keep fallback category groups when backend is unavailable.
+      }
+    };
+
+    loadPortfolios();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <div className="gallery-theme-scope min-h-screen transition-colors duration-500">

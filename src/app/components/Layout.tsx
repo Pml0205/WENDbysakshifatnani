@@ -1,23 +1,31 @@
-import { Link, Outlet } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, Outlet, useLocation } from "react-router";
 import { Instagram, Linkedin, Mail } from "lucide-react";
 
 const imgImage2 = "/logo.png";
 
 export function Layout() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
   return (
     <div className="min-h-screen bg-[#f3f6ff] transition-colors duration-500 day-mode">
       {/* Navbar */}
       <nav className="bg-[#072c3c] shadow-lg sticky top-0 z-50">
-        <div className="container mx-auto px-8 py-4">
+        <div className="container mx-auto px-4 py-3 sm:px-6 md:px-8 md:py-4">
           <div className="flex items-center justify-between">
             {/* Logo and Business Name */}
             <Link to="/" className="flex items-center gap-3">
               <img
                 src={imgImage2}
                 alt="WEND logo"
-                className="h-12 w-14 object-cover"
+                className="h-10 w-12 object-cover sm:h-12 sm:w-14"
               />
-              <span className="font-['Arimo:Regular',sans-serif] text-xl text-white tracking-wide">
+              <span className="max-w-[190px] truncate font-['Arimo:Regular',sans-serif] text-base text-white tracking-wide sm:max-w-none sm:text-lg md:text-xl">
                 WENDbysakshifatnani
               </span>
             </Link>
@@ -69,11 +77,68 @@ export function Layout() {
 
             {/* Mobile Menu Button */}
             <div className="flex items-center gap-2 md:hidden">
-              <button className="p-2">
-                <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              <button
+                type="button"
+                aria-label="Toggle navigation menu"
+                aria-controls="mobile-nav"
+                aria-expanded={isMobileMenuOpen}
+                onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+                className="rounded-md border border-white/20 p-2 text-white transition hover:bg-white/10"
+              >
+                <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  {isMobileMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  )}
                 </svg>
               </button>
+            </div>
+          </div>
+
+          <div
+            id="mobile-nav"
+            className={`overflow-hidden transition-all duration-300 ease-out md:hidden ${
+              isMobileMenuOpen ? "mt-3 max-h-[420px] opacity-100" : "max-h-0 opacity-0"
+            }`}
+          >
+            <div className="space-y-1 rounded-xl border border-white/15 bg-[#0b3850] p-3 shadow-lg">
+              <Link
+                to="/"
+                className="block rounded-md px-3 py-2 font-['Arimo:Regular',sans-serif] text-white transition hover:bg-white/10"
+              >
+                Home
+              </Link>
+              <Link
+                to="/portfolio"
+                className="block rounded-md px-3 py-2 font-['Arimo:Regular',sans-serif] text-white transition hover:bg-white/10"
+              >
+                Portfolio
+              </Link>
+              <Link
+                to="/projects"
+                className="block rounded-md px-3 py-2 font-['Arimo:Regular',sans-serif] text-white transition hover:bg-white/10"
+              >
+                Projects
+              </Link>
+              <Link
+                to="/services"
+                className="block rounded-md px-3 py-2 font-['Arimo:Regular',sans-serif] text-white transition hover:bg-white/10"
+              >
+                Services
+              </Link>
+              <Link
+                to="/about"
+                className="block rounded-md px-3 py-2 font-['Arimo:Regular',sans-serif] text-white transition hover:bg-white/10"
+              >
+                About
+              </Link>
+              <Link
+                to="/contact"
+                className="mt-2 block rounded-md bg-white px-3 py-2 text-center font-['Arimo:Regular',sans-serif] text-[#072c3c] transition hover:bg-[#f3f6ff]"
+              >
+                Contact
+              </Link>
             </div>
           </div>
         </div>

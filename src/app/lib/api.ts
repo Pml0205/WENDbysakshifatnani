@@ -16,10 +16,27 @@ export interface WebsiteProject {
   createdAt?: string;
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
-const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
-const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+export interface WebsitePortfolio {
+  id: string;
+  title: string;
+  description: string;
+  images: string[];
+  createdAt?: string;
+}
+
+type AppImportMetaEnv = {
+  readonly VITE_API_BASE_URL?: string;
+  readonly VITE_EMAILJS_SERVICE_ID?: string;
+  readonly VITE_EMAILJS_TEMPLATE_ID?: string;
+  readonly VITE_EMAILJS_PUBLIC_KEY?: string;
+};
+
+const appImportMeta = import.meta as ImportMeta & { env: AppImportMetaEnv };
+
+const API_BASE_URL = (appImportMeta.env.VITE_API_BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+const EMAILJS_SERVICE_ID = appImportMeta.env.VITE_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = appImportMeta.env.VITE_EMAILJS_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY = appImportMeta.env.VITE_EMAILJS_PUBLIC_KEY;
 
 const hasEmailJsConfig = Boolean(EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY);
 
@@ -59,6 +76,23 @@ export const fetchProjects = async (): Promise<WebsiteProject[]> => {
   return projects.map((project) => ({
     ...project,
     images: Array.isArray(project.images) ? project.images.map(toAbsoluteMediaUrl) : [],
+  }));
+};
+
+export const fetchPortfolios = async (): Promise<WebsitePortfolio[]> => {
+  const response = await fetch(`${API_BASE_URL}/api/portfolios`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+
+  const portfolios = (await response.json()) as WebsitePortfolio[];
+  return portfolios.map((portfolio) => ({
+    ...portfolio,
+    images: Array.isArray(portfolio.images) ? portfolio.images.map(toAbsoluteMediaUrl) : [],
   }));
 };
 
