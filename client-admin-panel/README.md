@@ -73,6 +73,10 @@ npm run dev
 
 Visit `http://localhost:3000` in your browser to access the admin panel.
 
+## Deployment Notes
+
+If the admin panel is deployed separately from the API, set `NEXT_PUBLIC_API_URL` to the backend URL in the hosting environment. If the backend is on a different origin, also set `CORS_ORIGIN` on the backend to the admin panel URL.
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.

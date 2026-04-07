@@ -1,5 +1,21 @@
 import type { NextConfig } from 'next';
 
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? process.env.VITE_API_BASE_URL ?? '';
+
+const connectSrc = ["'self'"];
+
+if (apiBaseUrl) {
+  try {
+    connectSrc.push(new URL(apiBaseUrl).origin);
+  } catch {
+    // Ignore relative or invalid URLs and keep same-origin requests only.
+  }
+}
+
+if (process.env.NODE_ENV !== 'production') {
+  connectSrc.push('http://localhost:3000', 'http://127.0.0.1:3000');
+}
+
 const securityHeaders = [
   // Prevent clickjacking
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
@@ -22,7 +38,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self'",
-      "connect-src 'self'",
+      `connect-src ${connectSrc.join(' ')}`,
       "frame-ancestors 'self'",
     ].join('; '),
   },

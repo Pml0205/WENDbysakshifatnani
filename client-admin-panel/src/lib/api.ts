@@ -1,6 +1,6 @@
 import { ContactMessage, Portfolio, Project } from '../types';
 
-// When NEXT_PUBLIC_API_URL is not set (local admin panel), paths are relative.
+// When NEXT_PUBLIC_API_URL is not set, requests stay same-origin.
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
