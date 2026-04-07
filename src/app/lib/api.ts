@@ -34,7 +34,13 @@ type AppImportMetaEnv = {
 const appImportMeta = import.meta as ImportMeta & { env?: AppImportMetaEnv };
 const appEnv = appImportMeta?.env ?? {};
 
-const API_BASE_URL = (appEnv.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+const DEFAULT_PROD_API_BASE_URL = 'https://wendbysakshifatnani.onrender.com';
+const fallbackApiBaseUrl =
+  appEnv.VITE_API_BASE_URL?.trim() ||
+  (typeof window !== 'undefined' && window.location.hostname.endsWith('vercel.app')
+    ? DEFAULT_PROD_API_BASE_URL
+    : '');
+const API_BASE_URL = fallbackApiBaseUrl.replace(/\/$/, '');
 const EMAILJS_SERVICE_ID = appEnv.VITE_EMAILJS_SERVICE_ID;
 const EMAILJS_TEMPLATE_ID = appEnv.VITE_EMAILJS_TEMPLATE_ID;
 const EMAILJS_PUBLIC_KEY = appEnv.VITE_EMAILJS_PUBLIC_KEY;
