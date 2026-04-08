@@ -45,13 +45,4 @@ export default function AdminRedirect() {
   }, [loginRedirectUrl]);
 
   return null;
-        <a
-          href={loginRedirectUrl}
-          className="mt-4 inline-flex rounded bg-[#072c3c] px-4 py-2 text-sm text-white transition hover:bg-[#0a3d52]"
-        >
-          Go To Admin Login
-        </a>
-      </div>
-    </div>
-  );
 }
