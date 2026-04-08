@@ -40,14 +40,11 @@ export default function AdminRedirect() {
   }, [adminBaseUrl, location.hash, location.pathname, location.search]);
 
   useEffect(() => {
-    window.location.replace(loginRedirectUrl);
+    // Redirect immediately
+    window.location.href = loginRedirectUrl;
   }, [loginRedirectUrl]);
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f3f6ff] px-6 text-center">
-      <div>
-        <h1 className="text-2xl font-semibold text-[#072c3c]">Redirecting to admin panel...</h1>
-        <p className="mt-3 text-sm text-[#475569]">If you are not redirected automatically, use the link below.</p>
+  return null;
         <a
           href={loginRedirectUrl}
           className="mt-4 inline-flex rounded bg-[#072c3c] px-4 py-2 text-sm text-white transition hover:bg-[#0a3d52]"
