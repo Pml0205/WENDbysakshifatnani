@@ -63,28 +63,53 @@ const readMailConfig = (): MailConfig => {
 
 let cachedTransporter: nodemailer.Transporter | null = null;
 
+const createTransport = (config: MailConfig, port: number, secure: boolean) => {
+  const transportOptions: SMTPTransport.Options & { family?: 4 | 6 } = {
+    host: config.host,
+    port,
+    secure,
+    requireTLS: port === 587,
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 20000,
+    dnsTimeout: 10000,
+    family: 4,
+    auth: {
+      user: config.user,
+      pass: config.pass,
+    },
+  };
+
+  return nodemailer.createTransport(transportOptions);
+};
+
 const getTransporter = (config: MailConfig) => {
   if (!cachedTransporter) {
-    const transportOptions: SMTPTransport.Options & { family?: 4 | 6 } = {
-      host: config.host,
-      port: config.port,
-      secure: config.secure,
-      requireTLS: config.port === 587,
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 8000,
-      dnsTimeout: 8000,
-      family: 4,
-      auth: {
-        user: config.user,
-        pass: config.pass,
-      },
-    };
-
-    cachedTransporter = nodemailer.createTransport(transportOptions);
+    cachedTransporter = createTransport(config, config.port, config.secure);
   }
 
   return cachedTransporter;
+};
+
+const sendWithFallback = async (
+  config: MailConfig,
+  mailOptions: nodemailer.SendMailOptions,
+) => {
+  try {
+    const primary = getTransporter(config);
+    return await primary.sendMail(mailOptions);
+  } catch (primaryError) {
+    const message = primaryError instanceof Error ? primaryError.message : String(primaryError);
+    const isTimeout = /timeout|timed out/i.test(message);
+    const canFallback = config.host === 'smtp.gmail.com' && config.port === 587;
+
+    if (!isTimeout || !canFallback) {
+      throw primaryError;
+    }
+
+    const fallbackTransporter = createTransport(config, 465, true);
+    return fallbackTransporter.sendMail(mailOptions);
+  }
 };
 
 export const sendContactNotificationEmail = async (payload: {
@@ -95,7 +120,6 @@ export const sendContactNotificationEmail = async (payload: {
   message: string;
 }) => {
   const config = readMailConfig();
-  const transporter = getTransporter(config);
 
   const subject = `New Contact Enquiry: ${payload.service}`;
   const text = [
@@ -120,7 +144,7 @@ export const sendContactNotificationEmail = async (payload: {
     <p>${payload.message.replace(/\n/g, '<br/>')}</p>
   `;
 
-  await transporter.sendMail({
+  await sendWithFallback(config, {
     from: {
       name: config.fromName,
       address: config.user,
