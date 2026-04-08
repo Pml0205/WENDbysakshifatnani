@@ -1,142 +1,48 @@
-import nodemailer from 'nodemailer';
-import SMTPTransport from 'nodemailer/lib/smtp-transport';
-import dns from 'node:dns/promises';
-
-type MailConfig = {
-  host: string;
-  port: number;
-  secure: boolean;
-  user: string;
-  pass: string;
-  fromName: string;
+type SendGridConfig = {
+  apiKey: string;
+  senderEmail: string;
+  senderName: string;
   receiver: string;
 };
 
+const SENDGRID_API_URL = 'https://api.sendgrid.com/v3/mail/send';
+
 const parseDisplayName = (value: string | undefined) => {
-  const trimmed = value?.trim();
+  const trimmed = (value || '').trim();
 
   if (!trimmed) {
-    return 'WEND Contact';
-  }
-
-  const emailMatch = trimmed.match(/<([^>]+)>/);
-  if (emailMatch) {
-    const name = trimmed.replace(/<[^>]+>/, '').trim().replace(/^"|"$/g, '');
-    return name || 'WEND Contact';
-  }
-
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
     return 'WEND Contact';
   }
 
   return trimmed;
 };
 
-const readMailConfig = (): MailConfig => {
-  const host = process.env.SMTP_HOST?.trim();
-  const portRaw = process.env.SMTP_PORT?.trim();
-  const user = process.env.SMTP_USER?.trim();
-  const pass = process.env.SMTP_PASS;
+const readMailConfig = (): SendGridConfig => {
+  const apiKey = process.env.SENDGRID_API_KEY?.trim();
+  const senderEmail = process.env.SENDGRID_SENDER_EMAIL?.trim();
+  const senderName = parseDisplayName(process.env.SENDGRID_SENDER_NAME);
   const receiver = process.env.CONTACT_RECEIVER_EMAIL?.trim();
-  const fromName = parseDisplayName(process.env.SMTP_FROM_EMAIL);
 
-  if (!host || !portRaw || !user || !pass || !receiver) {
+  if (!apiKey || !senderEmail || !receiver) {
     throw new Error(
-      'Missing SMTP configuration. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, CONTACT_RECEIVER_EMAIL, and optionally SMTP_FROM_EMAIL for the display name.',
+      'Missing SendGrid configuration. Set SENDGRID_API_KEY, SENDGRID_SENDER_EMAIL, CONTACT_RECEIVER_EMAIL, and optionally SENDGRID_SENDER_NAME.',
     );
   }
 
-  const port = Number(portRaw);
-  if (!Number.isFinite(port) || port <= 0) {
-    throw new Error('SMTP_PORT must be a valid positive number.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail)) {
+    throw new Error('SENDGRID_SENDER_EMAIL must be a valid email address.');
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiver)) {
+    throw new Error('CONTACT_RECEIVER_EMAIL must be a valid email address.');
   }
 
   return {
-    host,
-    port,
-    secure: port === 465,
-    user,
-    pass,
-    fromName,
+    apiKey,
+    senderEmail,
+    senderName,
     receiver,
   };
-};
-
-let cachedTransporter: nodemailer.Transporter | null = null;
-
-const createTransport = (
-  config: MailConfig,
-  port: number,
-  secure: boolean,
-  hostOverride?: string,
-) => {
-  const host = hostOverride || config.host;
-  const transportOptions: SMTPTransport.Options & { family?: 4 | 6 } = {
-    host,
-    port,
-    secure,
-    requireTLS: port === 587,
-    connectionTimeout: 20000,
-    greetingTimeout: 20000,
-    socketTimeout: 20000,
-    dnsTimeout: 10000,
-    family: 4,
-    auth: {
-      user: config.user,
-      pass: config.pass,
-    },
-    tls: hostOverride
-      ? {
-          servername: config.host,
-        }
-      : undefined,
-  };
-
-  return nodemailer.createTransport(transportOptions);
-};
-
-const getTransporter = (config: MailConfig) => {
-  if (!cachedTransporter) {
-    cachedTransporter = createTransport(config, config.port, config.secure);
-  }
-
-  return cachedTransporter;
-};
-
-const sendWithFallback = async (
-  config: MailConfig,
-  mailOptions: nodemailer.SendMailOptions,
-) => {
-  const resolvedIPv4Host = await (async () => {
-    try {
-      const addresses = await dns.resolve4(config.host);
-      return addresses[0];
-    } catch {
-      return undefined;
-    }
-  })();
-
-  const shouldFallback = (message: string) => /timeout|timed out|ENETUNREACH|EHOSTUNREACH|ETIMEDOUT/i.test(message);
-
-  try {
-    const primary = resolvedIPv4Host
-      ? createTransport(config, config.port, config.secure, resolvedIPv4Host)
-      : getTransporter(config);
-    return await primary.sendMail(mailOptions);
-  } catch (primaryError) {
-    const message = primaryError instanceof Error ? primaryError.message : String(primaryError);
-    const isRecoverableNetworkError = shouldFallback(message);
-    const canFallback = config.host === 'smtp.gmail.com' && config.port === 587;
-
-    if (!isRecoverableNetworkError || !canFallback) {
-      throw primaryError;
-    }
-
-    const fallbackTransporter = resolvedIPv4Host
-      ? createTransport(config, 465, true, resolvedIPv4Host)
-      : createTransport(config, 465, true);
-    return fallbackTransporter.sendMail(mailOptions);
-  }
 };
 
 export const sendContactNotificationEmail = async (payload: {
@@ -171,15 +77,41 @@ export const sendContactNotificationEmail = async (payload: {
     <p>${payload.message.replace(/\n/g, '<br/>')}</p>
   `;
 
-  await sendWithFallback(config, {
-    from: {
-      name: config.fromName,
-      address: config.user,
+  const response = await fetch(SENDGRID_API_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      'Content-Type': 'application/json',
     },
-    to: config.receiver,
-    replyTo: payload.email,
-    subject,
-    text,
-    html,
+    body: JSON.stringify({
+      personalizations: [
+        {
+          to: [{ email: config.receiver }],
+          subject: subject,
+        },
+      ],
+      from: {
+        email: config.senderEmail,
+        name: config.senderName,
+      },
+      reply_to: {
+        email: payload.email,
+        name: payload.name,
+      },
+      content: [
+        { type: 'text/plain', value: text },
+        { type: 'text/html', value: html },
+      ],
+    }),
   });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[email] SendGrid API error:', errorText);
+    throw new Error(
+      `SendGrid API request failed (${response.status}): ${errorText || response.statusText}`,
+    );
+  }
+
+  console.log('[email] contact notification sent successfully via SendGrid');
 };

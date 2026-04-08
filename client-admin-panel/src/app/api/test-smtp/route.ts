@@ -6,23 +6,23 @@ export const runtime = 'nodejs';
 export async function GET() {
   try {
     await sendContactNotificationEmail({
-      name: 'SMTP Test',
+      name: 'SendGrid Test',
       email: 'test@example.com',
       service: 'Test',
-      message: 'This is a test email to verify SMTP configuration.',
+      message: 'This is a test email to verify SendGrid API configuration.',
     });
 
     return NextResponse.json({
       status: 'success',
-      message: 'Test email sent successfully. Check your inbox.',
+      message: 'Test email sent successfully via SendGrid. Check your inbox.',
     });
   } catch (error) {
-    console.error('SMTP Test Error:', error);
+    console.error('SendGrid Test Error:', error);
     return NextResponse.json(
       {
         status: 'error',
         message: error instanceof Error ? error.message : 'Unknown error',
-        hint: 'SMTP_PASS must be a Gmail App Password (16 characters), not your regular Gmail password.',
+        hint: 'Ensure SENDGRID_API_KEY, SENDGRID_SENDER_EMAIL, and CONTACT_RECEIVER_EMAIL are set in environment variables.',
       },
       { status: 500 },
     );

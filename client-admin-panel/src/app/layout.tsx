@@ -1,4 +1,4 @@
-import '../styles/globals.css';
+import 'styles/globals.css';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import LogoutButton from '../components/auth/LogoutButton';
