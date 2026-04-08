@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import SMTPTransport from 'nodemailer/lib/smtp-transport';
+import dns from 'node:dns/promises';
 
 type MailConfig = {
   host: string;
@@ -63,9 +64,15 @@ const readMailConfig = (): MailConfig => {
 
 let cachedTransporter: nodemailer.Transporter | null = null;
 
-const createTransport = (config: MailConfig, port: number, secure: boolean) => {
+const createTransport = (
+  config: MailConfig,
+  port: number,
+  secure: boolean,
+  hostOverride?: string,
+) => {
+  const host = hostOverride || config.host;
   const transportOptions: SMTPTransport.Options & { family?: 4 | 6 } = {
-    host: config.host,
+    host,
     port,
     secure,
     requireTLS: port === 587,
@@ -78,6 +85,11 @@ const createTransport = (config: MailConfig, port: number, secure: boolean) => {
       user: config.user,
       pass: config.pass,
     },
+    tls: hostOverride
+      ? {
+          servername: config.host,
+        }
+      : undefined,
   };
 
   return nodemailer.createTransport(transportOptions);
@@ -95,19 +107,34 @@ const sendWithFallback = async (
   config: MailConfig,
   mailOptions: nodemailer.SendMailOptions,
 ) => {
+  const resolvedIPv4Host = await (async () => {
+    try {
+      const addresses = await dns.resolve4(config.host);
+      return addresses[0];
+    } catch {
+      return undefined;
+    }
+  })();
+
+  const shouldFallback = (message: string) => /timeout|timed out|ENETUNREACH|EHOSTUNREACH|ETIMEDOUT/i.test(message);
+
   try {
-    const primary = getTransporter(config);
+    const primary = resolvedIPv4Host
+      ? createTransport(config, config.port, config.secure, resolvedIPv4Host)
+      : getTransporter(config);
     return await primary.sendMail(mailOptions);
   } catch (primaryError) {
     const message = primaryError instanceof Error ? primaryError.message : String(primaryError);
-    const isTimeout = /timeout|timed out/i.test(message);
+    const isRecoverableNetworkError = shouldFallback(message);
     const canFallback = config.host === 'smtp.gmail.com' && config.port === 587;
 
-    if (!isTimeout || !canFallback) {
+    if (!isRecoverableNetworkError || !canFallback) {
       throw primaryError;
     }
 
-    const fallbackTransporter = createTransport(config, 465, true);
+    const fallbackTransporter = resolvedIPv4Host
+      ? createTransport(config, 465, true, resolvedIPv4Host)
+      : createTransport(config, 465, true);
     return fallbackTransporter.sendMail(mailOptions);
   }
 };
