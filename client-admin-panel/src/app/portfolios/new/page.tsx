@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import PortfolioForm from '../../../components/portfolios/PortfolioForm';
+import { requireAdmin } from '../../../lib/requireAdmin';
 
-export default function NewPortfolioPage() {
+export default async function NewPortfolioPage() {
+  await requireAdmin('/portfolios/new');
+
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <div className="mb-6">

@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import PortfolioForm from '../../../components/portfolios/PortfolioForm';
+import { requireAdmin } from '../../../lib/requireAdmin';
 
 export default async function PortfolioEditPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin('/portfolios');
   const { id } = await params;
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">

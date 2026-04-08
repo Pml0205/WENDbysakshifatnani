@@ -8,8 +8,28 @@ type MailConfig = {
   ipFamily: 4 | 6;
   user: string;
   pass: string;
-  from: string;
+  fromName: string;
   receiver: string;
+};
+
+const parseDisplayName = (value: string | undefined) => {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return 'WEND Contact';
+  }
+
+  const emailMatch = trimmed.match(/<([^>]+)>/);
+  if (emailMatch) {
+    const name = trimmed.replace(/<[^>]+>/, '').trim().replace(/^"|"$/g, '');
+    return name || 'WEND Contact';
+  }
+
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return 'WEND Contact';
+  }
+
+  return trimmed;
 };
 
 const readMailConfig = (): MailConfig => {
@@ -18,12 +38,12 @@ const readMailConfig = (): MailConfig => {
   const ipFamilyRaw = process.env.SMTP_IP_FAMILY?.trim();
   const user = process.env.SMTP_USER?.trim();
   const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM_EMAIL?.trim();
   const receiver = process.env.CONTACT_RECEIVER_EMAIL?.trim();
+  const fromName = parseDisplayName(process.env.SMTP_FROM_EMAIL);
 
-  if (!host || !portRaw || !user || !pass || !from || !receiver) {
+  if (!host || !portRaw || !user || !pass || !receiver) {
     throw new Error(
-      'Missing SMTP configuration. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM_EMAIL, CONTACT_RECEIVER_EMAIL.',
+      'Missing SMTP configuration. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, CONTACT_RECEIVER_EMAIL, and optionally SMTP_FROM_EMAIL for the display name.',
     );
   }
 
@@ -41,7 +61,7 @@ const readMailConfig = (): MailConfig => {
     ipFamily,
     user,
     pass,
-    from,
+    fromName,
     receiver,
   };
 };
@@ -54,6 +74,11 @@ const getTransporter = (config: MailConfig) => {
       host: config.host,
       port: config.port,
       secure: config.secure,
+      requireTLS: config.port === 587,
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 8000,
+      dnsTimeout: 8000,
       family: config.ipFamily,
       auth: {
         user: config.user,
@@ -101,7 +126,10 @@ export const sendContactNotificationEmail = async (payload: {
   `;
 
   await transporter.sendMail({
-    from: config.from,
+    from: {
+      name: config.fromName,
+      address: config.user,
+    },
     to: config.receiver,
     replyTo: payload.email,
     subject,

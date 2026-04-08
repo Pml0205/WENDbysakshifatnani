@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import ProjectTable from '../../components/projects/ProjectTable';
+import { requireAdmin } from '../../lib/requireAdmin';
 
-export default function ProjectsPage() {
+export default async function ProjectsPage() {
+  await requireAdmin('/projects');
+
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <div className="flex items-center justify-between mb-6">

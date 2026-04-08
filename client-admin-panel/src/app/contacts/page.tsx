@@ -1,6 +1,9 @@
 import ContactTable from '../../components/contacts/ContactTable';
+import { requireAdmin } from '../../lib/requireAdmin';
 
-export default function ContactsPage() {
+export default async function ContactsPage() {
+  await requireAdmin('/contacts');
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
       <div className="mb-6">

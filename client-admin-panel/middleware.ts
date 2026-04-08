@@ -40,6 +40,7 @@ const buildLoginRedirect = (request: NextRequest) => {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const forceLogin = request.nextUrl.searchParams.get('forceLogin') === '1';
 
   if (isPublicApiRequest(request)) {
     return NextResponse.next();
@@ -47,6 +48,17 @@ export async function middleware(request: NextRequest) {
 
   if (isPublicPath(pathname)) {
     if (pathname === '/login') {
+      if (forceLogin) {
+        const response = NextResponse.next();
+        response.cookies.set({
+          name: SESSION_COOKIE_NAME,
+          value: '',
+          path: '/',
+          maxAge: 0,
+        });
+        return response;
+      }
+
       const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
       if (token) {
         const payload = await verifySessionToken(token);

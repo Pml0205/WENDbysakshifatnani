@@ -6,8 +6,13 @@ import Projects from "./pages/Projects";
 import Services from "./pages/Services";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import AdminRedirect from "./pages/AdminRedirect";
 
 export const router = createBrowserRouter([
+  {
+    path: "/admin/*",
+    Component: AdminRedirect,
+  },
   {
     path: "/",
     Component: Layout,

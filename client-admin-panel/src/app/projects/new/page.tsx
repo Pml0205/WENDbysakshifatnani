@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import ProjectForm from '../../../components/projects/ProjectForm';
+import { requireAdmin } from '../../../lib/requireAdmin';
 
-export default function NewProjectPage() {
+export default async function NewProjectPage() {
+  await requireAdmin('/projects/new');
+
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <div className="mb-6">

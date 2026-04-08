@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import PortfolioTable from '../../components/portfolios/PortfolioTable';
+import { requireAdmin } from '../../lib/requireAdmin';
 
-export default function PortfoliosPage() {
+export default async function PortfoliosPage() {
+  await requireAdmin('/portfolios');
+
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <div className="flex items-center justify-between mb-6">

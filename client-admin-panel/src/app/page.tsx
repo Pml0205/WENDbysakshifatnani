@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { requireAdmin } from '../lib/requireAdmin';
 
 const cards = [
   {
@@ -27,7 +28,9 @@ const cards = [
   },
 ];
 
-export default function AdminDashboard() {
+export default async function AdminDashboard() {
+  await requireAdmin('/');
+
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <div className="mb-8">

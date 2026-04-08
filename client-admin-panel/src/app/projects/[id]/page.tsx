@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import ProjectForm from '../../../components/projects/ProjectForm';
+import { requireAdmin } from '../../../lib/requireAdmin';
 
 export default async function ProjectEditPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin('/projects');
   const { id } = await params;
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
