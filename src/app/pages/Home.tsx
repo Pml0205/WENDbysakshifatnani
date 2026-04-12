@@ -74,6 +74,19 @@ const fallbackHeroImages = [
   { src: imgInteriorSix, alt: "Modern living space with sculptural decor" },
 ].filter((image) => Boolean(image.src));
 
+const publicHeroImages = [
+  { src: "/1.png", alt: "WEND hero interior 1" },
+  { src: "/2.png", alt: "WEND hero interior 2" },
+  { src: "/3.png", alt: "WEND hero interior 3" },
+  { src: "/4.png", alt: "WEND hero interior 4" },
+  { src: "/5.png", alt: "WEND hero interior 5" },
+  { src: "/6.png", alt: "WEND hero interior 6" },
+  { src: "/7.png", alt: "WEND hero interior 7" },
+  { src: "/8.png", alt: "WEND hero interior 8" },
+  { src: "/9.png", alt: "WEND hero interior 9" },
+  { src: "/10.png", alt: "WEND hero interior 10" },
+];
+
 const curatedAssetGalleryImages = [
   ...pickImages("Living Room", 2),
   ...pickImages("Bedrooms", 2),
@@ -134,11 +147,7 @@ export default function Home() {
     })),
   );
 
-  const mergedHeroPool = [...projectImagePool, ...fallbackHeroImages].filter(
-    (image, index, arr) => image.src && arr.findIndex((item) => item.src === image.src) === index,
-  );
-
-  const heroCarouselImages = mergedHeroPool.slice(0, 8);
+  const heroCarouselImages = publicHeroImages;
 
   const serviceItems = [
     {
@@ -223,7 +232,7 @@ export default function Home() {
   return (
     <>
       <section
-        className="relative flex min-h-[78vh] items-center overflow-hidden py-20 md:py-28"
+        className="relative h-[100svh] min-h-[100svh] overflow-hidden"
         id="home"
       >
         <Carousel
@@ -233,24 +242,25 @@ export default function Home() {
         >
           <CarouselContent className="ml-0 h-full">
             {heroCarouselImages.map((image, index) => (
-              <CarouselItem key={index} className="h-full bg-[#0f2430] pl-0">
-                <img
-                  src={image.src}
-                  alt={image.alt}
-                  className="h-full w-full object-contain"
+              <CarouselItem key={index} className="h-[100svh] min-h-[100svh] bg-[#0f2430] pl-0">
+                <div
+                  role="img"
+                  aria-label={image.alt}
+                  className="h-full w-full bg-cover bg-center bg-no-repeat"
+                  style={{ backgroundImage: `url("${image.src}")` }}
                 />
               </CarouselItem>
             ))}
           </CarouselContent>
-          <CarouselPrevious className="left-4 top-1/2 z-20 -translate-y-1/2 border-white/70 bg-white/90 text-[#072c3c] hover:bg-white" />
-          <CarouselNext className="right-4 top-1/2 z-20 -translate-y-1/2 border-white/70 bg-white/90 text-[#072c3c] hover:bg-white" />
+          <CarouselPrevious className="left-4 top-1/2 z-20 hidden -translate-y-1/2 border-white/70 bg-white/90 text-[#072c3c] hover:bg-white sm:inline-flex" />
+          <CarouselNext className="right-4 top-1/2 z-20 hidden -translate-y-1/2 border-white/70 bg-white/90 text-[#072c3c] hover:bg-white sm:inline-flex" />
         </Carousel>
 
         <div className="absolute inset-0 z-10 bg-[#072c3c]/55" />
 
-        <div className="relative z-20 container mx-auto px-6 lg:px-8">
+        <div className="relative z-20 flex h-full w-full items-center justify-center px-6 lg:px-8">
           <motion.div
-            className="max-w-3xl space-y-6"
+            className="max-w-3xl space-y-5 text-center sm:space-y-6"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
@@ -258,7 +268,7 @@ export default function Home() {
             <h1 className="font-['Arimo:Regular',sans-serif] text-4xl leading-tight text-white sm:text-5xl lg:text-6xl">
               Designing Spaces and Exploring Materials
             </h1>
-            <p className="max-w-xl font-['Arimo:Regular',sans-serif] text-base text-white/90 sm:text-lg">
+            <p className="mx-auto max-w-md font-['Arimo:Regular',sans-serif] text-base text-white/90 sm:max-w-xl sm:text-lg">
               We create sophisticated interiors that blend form, function, and atmosphere for modern living.
             </p>
             <Link
