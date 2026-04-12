@@ -35,22 +35,66 @@ const appImportMeta = import.meta as ImportMeta & { env?: AppImportMetaEnv };
 const appEnv = appImportMeta?.env ?? {};
 
 const DEFAULT_PROD_API_BASE_URL = 'https://wendbysakshifatnani.onrender.com';
-const fallbackApiBaseUrl =
-  appEnv.VITE_API_BASE_URL?.trim() ||
-  (typeof window !== 'undefined' && window.location.hostname.endsWith('vercel.app')
-    ? DEFAULT_PROD_API_BASE_URL
-    : '');
-const API_BASE_URL = fallbackApiBaseUrl.replace(/\/$/, '');
+const LOCAL_API_BASE_URL = 'http://localhost:3000';
+
+const normalizeBaseUrl = (value?: string) => value?.trim().replace(/\/+$/, '') ?? '';
+
+const resolveApiBaseUrl = () => {
+  const configuredBaseUrl = normalizeBaseUrl(appEnv.VITE_API_BASE_URL);
+  if (configuredBaseUrl) {
+    return configuredBaseUrl;
+  }
+
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return LOCAL_API_BASE_URL;
+    }
+  }
+
+  return DEFAULT_PROD_API_BASE_URL;
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
 const EMAILJS_SERVICE_ID = appEnv.VITE_EMAILJS_SERVICE_ID;
 const EMAILJS_TEMPLATE_ID = appEnv.VITE_EMAILJS_TEMPLATE_ID;
 const EMAILJS_PUBLIC_KEY = appEnv.VITE_EMAILJS_PUBLIC_KEY;
 
 const hasEmailJsConfig = Boolean(EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY);
 
+const parseJsonSafely = <T>(raw: string, fallbackMessage: string): T => {
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    throw new Error(fallbackMessage);
+  }
+};
+
+const isHtmlPayload = (raw: string) => {
+  const trimmed = raw.trimStart();
+  return trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html') || trimmed.startsWith('<');
+};
+
+const ensureJsonResponse = async <T>(response: Response, endpoint: string): Promise<T> => {
+  const raw = await response.text();
+
+  if (!raw) {
+    throw new Error(`Empty response from ${endpoint}.`);
+  }
+
+  if (isHtmlPayload(raw)) {
+    throw new Error(
+      `Received HTML instead of JSON from ${endpoint}. Verify VITE_API_BASE_URL points to the backend (${DEFAULT_PROD_API_BASE_URL}).`,
+    );
+  }
+
+  return parseJsonSafely<T>(raw, `Invalid JSON response from ${endpoint}.`);
+};
+
 const parseError = async (response: Response) => {
   const fallback = `Request failed with status ${response.status}`;
   try {
-    const payload = (await response.json()) as { message?: string };
+    const payload = await ensureJsonResponse<{ message?: string }>(response, response.url || 'API endpoint');
     return payload.message ?? fallback;
   } catch {
     return fallback;
@@ -76,7 +120,8 @@ const toAbsoluteMediaUrl = (url: string) => {
 };
 
 export const fetchProjects = async (): Promise<WebsiteProject[]> => {
-  const response = await fetch(buildApiUrl('/api/projects'), {
+  const endpoint = buildApiUrl('/api/projects');
+  const response = await fetch(endpoint, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -85,7 +130,7 @@ export const fetchProjects = async (): Promise<WebsiteProject[]> => {
     throw new Error(await parseError(response));
   }
 
-  const projects = (await response.json()) as WebsiteProject[];
+  const projects = await ensureJsonResponse<WebsiteProject[]>(response, endpoint);
   return projects.map((project) => ({
     ...project,
     images: Array.isArray(project.images) ? project.images.map(toAbsoluteMediaUrl) : [],
@@ -93,7 +138,8 @@ export const fetchProjects = async (): Promise<WebsiteProject[]> => {
 };
 
 export const fetchPortfolios = async (): Promise<WebsitePortfolio[]> => {
-  const response = await fetch(buildApiUrl('/api/portfolios'), {
+  const endpoint = buildApiUrl('/api/portfolios');
+  const response = await fetch(endpoint, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -102,7 +148,7 @@ export const fetchPortfolios = async (): Promise<WebsitePortfolio[]> => {
     throw new Error(await parseError(response));
   }
 
-  const portfolios = (await response.json()) as WebsitePortfolio[];
+  const portfolios = await ensureJsonResponse<WebsitePortfolio[]>(response, endpoint);
   return portfolios.map((portfolio) => ({
     ...portfolio,
     images: Array.isArray(portfolio.images) ? portfolio.images.map(toAbsoluteMediaUrl) : [],
@@ -140,7 +186,8 @@ export const submitContactForm = async (payload: {
     }
   }
 
-  const response = await fetch(buildApiUrl('/api/contact'), {
+  const endpoint = buildApiUrl('/api/contact');
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -153,5 +200,5 @@ export const submitContactForm = async (payload: {
     throw new Error(await parseError(response));
   }
 
-  return (await response.json()) as { warning?: string };
+  return ensureJsonResponse<{ warning?: string }>(response, endpoint);
 };
