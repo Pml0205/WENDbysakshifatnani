@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { Instagram, Linkedin, Mail } from "lucide-react";
+import { Instagram, Mail } from "lucide-react";
 
 const imgImage2 = "/logo.png";
 
@@ -193,13 +193,20 @@ export function Layout() {
             <div>
               <h4 className="mb-3 font-['Arimo:Regular',sans-serif] text-lg">Follow</h4>
               <div className="flex items-center gap-4 text-white/85">
-                <a href="#" aria-label="Instagram" className="transition-colors hover:text-white">
+                <a
+                  href="https://www.instagram.com/wendbysakshifatnani/"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Instagram"
+                  className="transition-colors hover:text-white"
+                >
                   <Instagram className="size-5" />
                 </a>
-                <a href="#" aria-label="LinkedIn" className="transition-colors hover:text-white">
-                  <Linkedin className="size-5" />
-                </a>
-                <a href="mailto:studio@wenddesign.com" aria-label="Email" className="transition-colors hover:text-white">
+                <a
+                  href="mailto:wendbysakshifatnani@gmail.com"
+                  aria-label="Email"
+                  className="transition-colors hover:text-white"
+                >
                   <Mail className="size-5" />
                 </a>
               </div>

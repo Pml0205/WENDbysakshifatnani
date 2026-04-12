@@ -21,7 +21,7 @@ function pickImage(folderName: string, fallbackIndex = 0) {
 }
 
 const imgImageMinimalistLivingRoom = pickImage("Living Room", 1);
-const imgImageModernInteriorDesign = pickImage("Bedrooms", 2);
+const imgImageModernInteriorDesign = pickImage("Bedrooms", 2); 
 
 export default function About() {
   return (
@@ -61,9 +61,9 @@ export default function About() {
             >
               <div className="relative overflow-hidden rounded-lg shadow-2xl">
                 <motion.img
-                  src={imgImageMinimalistLivingRoom}
+                  src="/logo.png"
                   alt="Interior design workspace"
-                  className="w-full h-[600px] object-cover"
+                  className="w-full h-[600px] object-contain bg-white p-8"
                   whileHover={{ scale: 1.05 }}
                   transition={{ duration: 0.5 }}
                 />
@@ -108,7 +108,7 @@ export default function About() {
               >
                 Our approach combines timeless design principles with contemporary aesthetics, 
                 ensuring every project stands the test of time while remaining relevant and inspiring. 
-                We believe that great design is not just about following trends—it's about understanding 
+                We believe that great design is not just about following trends, it's about understanding 
                 people, their stories, and creating environments that enhance their lives.
               </motion.p>
               <motion.p
@@ -174,7 +174,7 @@ export default function About() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: 0.5 }}
               >
-                "Design is not just about making things look beautiful—it's about creating environments 
+                "Design is not just about making things look beautiful- it's about creating environments 
                 that support and enhance the way people live, work, and connect with each other."
               </motion.p>
             </motion.div>
