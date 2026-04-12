@@ -1,3 +1,5 @@
+import sgMail from '@sendgrid/mail';
+
 type SendGridConfig = {
   apiKey: string;
   senderEmail: string;
@@ -5,7 +7,7 @@ type SendGridConfig = {
   receiver: string;
 };
 
-const SENDGRID_API_URL = 'https://api.sendgrid.com/v3/mail/send';
+let sendGridClientInitialized = false;
 
 const parseDisplayName = (value: string | undefined) => {
   const trimmed = (value || '').trim();
@@ -16,6 +18,16 @@ const parseDisplayName = (value: string | undefined) => {
 
   return trimmed;
 };
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
 const readMailConfig = (): SendGridConfig => {
   const apiKey = process.env.SENDGRID_API_KEY?.trim();
@@ -29,11 +41,11 @@ const readMailConfig = (): SendGridConfig => {
     );
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail)) {
+  if (!EMAIL_REGEX.test(senderEmail)) {
     throw new Error('SENDGRID_SENDER_EMAIL must be a valid email address.');
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiver)) {
+  if (!EMAIL_REGEX.test(receiver)) {
     throw new Error('CONTACT_RECEIVER_EMAIL must be a valid email address.');
   }
 
@@ -54,64 +66,97 @@ export const sendContactNotificationEmail = async (payload: {
 }) => {
   const config = readMailConfig();
 
-  const subject = `New Contact Enquiry: ${payload.service}`;
-  const text = [
-    'You received a new contact enquiry.',
-    '',
-    `Name: ${payload.name}`,
-    `Email: ${payload.email}`,
-    `Location: ${payload.location || 'Not provided'}`,
-    `Service: ${payload.service}`,
-    '',
-    'Message:',
-    payload.message,
-  ].join('\n');
+  if (!payload.name.trim()) {
+    throw new Error('Contact name is required for email notification.');
+  }
 
-  const html = `
-    <h2>New Contact Enquiry</h2>
-    <p><strong>Name:</strong> ${payload.name}</p>
-    <p><strong>Email:</strong> ${payload.email}</p>
-    <p><strong>Location:</strong> ${payload.location || 'Not provided'}</p>
-    <p><strong>Service:</strong> ${payload.service}</p>
-    <p><strong>Message:</strong></p>
-    <p>${payload.message.replace(/\n/g, '<br/>')}</p>
-  `;
+  if (!EMAIL_REGEX.test(payload.email.trim())) {
+    throw new Error('Contact email is invalid for replyTo.');
+  }
 
-  const response = await fetch(SENDGRID_API_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      personalizations: [
-        {
-          to: [{ email: config.receiver }],
-          subject: subject,
-        },
-      ],
-      from: {
-        email: config.senderEmail,
-        name: config.senderName,
-      },
-      reply_to: {
-        email: payload.email,
-        name: payload.name,
-      },
-      content: [
-        { type: 'text/plain', value: text },
-        { type: 'text/html', value: html },
-      ],
-    }),
+  if (!payload.service.trim() || !payload.message.trim()) {
+    throw new Error('Service and message are required for email notification.');
+  }
+
+  if (!sendGridClientInitialized) {
+    sgMail.setApiKey(config.apiKey);
+    sendGridClientInitialized = true;
+  }
+
+  console.info('[email] SendGrid config loaded', {
+    hasApiKey: Boolean(config.apiKey),
+    senderEmail: config.senderEmail,
+    receiverEmail: config.receiver,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[email] SendGrid API error:', errorText);
-    throw new Error(
-      `SendGrid API request failed (${response.status}): ${errorText || response.statusText}`,
+  if (config.senderEmail.toLowerCase() === config.receiver.toLowerCase()) {
+    console.warn(
+      '[email] sender and receiver are identical; this can increase spam filtering risk. Consider using a domain sender identity.',
     );
   }
 
-  console.log('[email] contact notification sent successfully via SendGrid');
+  const subject = `New Contact Form - ${payload.name.trim()}`;
+  const text = [
+    'You received a new contact form submission.',
+    '',
+    `Name: ${payload.name.trim()}`,
+    `Email: ${payload.email.trim()}`,
+    `Location: ${(payload.location || '').trim() || 'Not provided'}`,
+    `Service: ${payload.service.trim()}`,
+    '',
+    'Message:',
+    payload.message.trim(),
+  ].join('\n');
+
+  const html = `
+    <h2>New Contact Form Submission</h2>
+    <p><strong>Name:</strong> ${escapeHtml(payload.name.trim())}</p>
+    <p><strong>Email:</strong> ${escapeHtml(payload.email.trim())}</p>
+    <p><strong>Location:</strong> ${escapeHtml((payload.location || '').trim() || 'Not provided')}</p>
+    <p><strong>Service:</strong> ${escapeHtml(payload.service.trim())}</p>
+    <p><strong>Message:</strong></p>
+    <p>${escapeHtml(payload.message.trim()).replace(/\n/g, '<br/>')}</p>
+  `;
+
+  const msg = {
+    to: config.receiver,
+    from: {
+      email: config.senderEmail,
+      name: config.senderName,
+    },
+    replyTo: payload.email.trim(),
+    subject,
+    text,
+    html,
+  };
+
+  console.info('[email] sending contact notification via SendGrid');
+
+  try {
+    const [response] = await sgMail.send(msg);
+    console.info('[email] SendGrid accepted message', {
+      statusCode: response.statusCode,
+      messageId: response.headers?.['x-message-id'] || null,
+    });
+  } catch (error) {
+    const sendGridError = error as Error & {
+      response?: {
+        body?: unknown;
+        headers?: Record<string, string>;
+        statusCode?: number;
+      };
+      code?: string;
+    };
+
+    console.error('[email] SendGrid send failed', {
+      message: sendGridError.message,
+      code: sendGridError.code,
+      statusCode: sendGridError.response?.statusCode,
+      responseBody: sendGridError.response?.body,
+    });
+
+    throw new Error(
+      `SendGrid send failed: ${sendGridError.message}`,
+    );
+  }
 };

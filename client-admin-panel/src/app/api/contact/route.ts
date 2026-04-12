@@ -59,6 +59,14 @@ export async function POST(request: Request) {
     const message = body.message?.trim() ?? '';
     const skipEmailNotification = body.skipEmailNotification === true;
 
+    console.info('[api/contact] payload parsed', {
+      hasName: Boolean(name),
+      hasEmail: Boolean(email),
+      hasService: Boolean(service),
+      hasMessage: Boolean(message),
+      skipEmailNotification,
+    });
+
     if (!name) {
       return NextResponse.json({ message: 'Name is required.' }, { status: 400, headers: getCorsHeaders(request) });
     }
@@ -83,31 +91,37 @@ export async function POST(request: Request) {
 
     const contact = await contactsDb.create({ name, email, location, service, message });
 
-    let emailNotificationSent = skipEmailNotification;
-    let warning: string | undefined;
+    console.info('[api/contact] contact saved', { contactId: contact.id ?? null });
 
     if (!skipEmailNotification) {
       try {
         await sendContactNotificationEmail({ name, email, location, service, message });
-        emailNotificationSent = true;
+        console.info('[api/contact] email notification sent successfully');
       } catch (mailError) {
-        console.error('Failed to send contact notification email:', mailError);
-        warning =
-          'Your enquiry was saved successfully, but email notification is not configured correctly yet.';
+        const errorMessage = mailError instanceof Error ? mailError.message : 'Unknown error';
+        console.error('[api/contact] Failed to send contact notification email', {
+          message: errorMessage,
+          error: mailError,
+        });
+
+        return Response.json(
+          {
+            success: false,
+            message: 'Contact saved but email delivery failed.',
+            detail: errorMessage,
+            contact,
+          },
+          { status: 502, headers: getCorsHeaders(request) },
+        );
       }
+    } else {
+      console.info('[api/contact] email notification skipped by request');
     }
 
-    return NextResponse.json(
-      {
-        ...contact,
-        emailNotificationSent,
-        ...(warning ? { warning } : {}),
-      },
-      { status: 201, headers: getCorsHeaders(request) },
-    );
+    return Response.json({ success: true, ...contact }, { status: 201, headers: getCorsHeaders(request) });
   } catch (error) {
     console.error('Failed to submit contact form:', error);
-    return NextResponse.json(
+    return Response.json(
       { message: 'Failed to submit contact form.' },
       { status: 500, headers: getCorsHeaders(request) },
     );
