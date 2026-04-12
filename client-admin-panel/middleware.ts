@@ -49,7 +49,8 @@ export async function middleware(request: NextRequest) {
   if (isPublicPath(pathname)) {
     if (pathname === '/login') {
       if (forceLogin) {
-        const response = NextResponse.next();
+        const cleanLoginUrl = new URL('/login', request.url);
+        const response = NextResponse.redirect(cleanLoginUrl);
         response.cookies.set({
           name: SESSION_COOKIE_NAME,
           value: '',
