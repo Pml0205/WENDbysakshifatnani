@@ -3,10 +3,16 @@ import { ContactMessage, Portfolio, Project } from '../types';
 // When NEXT_PUBLIC_API_URL is not set, requests stay same-origin.
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 
+// Debug logging
+if (typeof window !== 'undefined') {
+  console.log('[API] Configured Base URL:', API_BASE_URL);
+}
+
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 const request = async <T>(path: string, method: HttpMethod, body?: unknown): Promise<T> => {
   const endpoint = `${API_BASE_URL}${path}`;
+  console.log(`[API] ${method} ${endpoint}`);
 
   const response = await fetch(endpoint, {
     method,
@@ -19,6 +25,7 @@ const request = async <T>(path: string, method: HttpMethod, body?: unknown): Pro
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`[API] Error ${response.status} on ${endpoint}:`, errorText);
     throw new Error(errorText || `Request failed with status ${response.status}`);
   }
 

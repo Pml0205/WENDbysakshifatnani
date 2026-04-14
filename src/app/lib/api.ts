@@ -34,7 +34,7 @@ type AppImportMetaEnv = {
 const appImportMeta = import.meta as ImportMeta & { env?: AppImportMetaEnv };
 const appEnv = appImportMeta?.env ?? {};
 
-const DEFAULT_PROD_API_BASE_URL = 'https://wendbysakshifatnani.onrender.com';
+const DEFAULT_PROD_API_BASE_URL = 'https://api.wendbysakshifatnani.in';
 const LOCAL_API_BASE_URL = 'http://localhost:3000';
 
 const normalizeBaseUrl = (value?: string) => value?.trim().replace(/\/+$/, '') ?? '';
@@ -42,16 +42,19 @@ const normalizeBaseUrl = (value?: string) => value?.trim().replace(/\/+$/, '') ?
 const resolveApiBaseUrl = () => {
   const configuredBaseUrl = normalizeBaseUrl(appEnv.VITE_API_BASE_URL);
   if (configuredBaseUrl) {
+    console.log("Using configured API base URL:", configuredBaseUrl);
     return configuredBaseUrl;
   }
 
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1') {
+      console.log("Using local API base URL:", LOCAL_API_BASE_URL);
       return LOCAL_API_BASE_URL;
     }
   }
 
+  console.log("Using default production API base URL:", DEFAULT_PROD_API_BASE_URL);
   return DEFAULT_PROD_API_BASE_URL;
 };
 

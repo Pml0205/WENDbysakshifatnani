@@ -17,7 +17,10 @@ const LoginPage = () => {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const endpoint = apiBaseUrl ? `${apiBaseUrl}/api/auth/login` : '/api/auth/login';
+      console.log('Login endpoint:', endpoint);
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

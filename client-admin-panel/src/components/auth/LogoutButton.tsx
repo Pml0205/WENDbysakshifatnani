@@ -11,7 +11,10 @@ const LogoutButton = () => {
   }
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    const endpoint = apiBaseUrl ? `${apiBaseUrl}/api/auth/logout` : '/api/auth/logout';
+    console.log('Logout endpoint:', endpoint);
+    await fetch(endpoint, { method: 'POST' });
     router.replace('/login');
     router.refresh();
   };
