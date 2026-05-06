@@ -133,7 +133,10 @@ export default function Projects() {
   const [projects, setProjects] = React.useState<ProjectViewModel[]>(fallbackProjects);
   const [projectError, setProjectError] = React.useState("");
   const [activeSlides, setActiveSlides] = React.useState<Record<number, number>>({});
+  const [lightboxProjectIndex, setLightboxProjectIndex] = React.useState<number | null>(null);
+  const [lightboxSlideIndex, setLightboxSlideIndex] = React.useState(0);
   const touchStartX = React.useRef<Record<number, number>>({});
+  const lightboxTouchStartX = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     let mounted = true;
@@ -224,6 +227,52 @@ export default function Projects() {
       }
     },
     [getActiveSlide, goToSlide],
+  );
+
+  const openLightbox = React.useCallback((projectIndex: number, slideIndex: number) => {
+    setLightboxProjectIndex(projectIndex);
+    setLightboxSlideIndex(slideIndex);
+  }, []);
+
+  const closeLightbox = React.useCallback(() => {
+    setLightboxProjectIndex(null);
+    setLightboxSlideIndex(0);
+    lightboxTouchStartX.current = null;
+  }, []);
+
+  const goToLightboxSlide = React.useCallback((nextIndex: number, totalImages: number) => {
+    if (totalImages <= 0) {
+      return;
+    }
+
+    const normalized = ((nextIndex % totalImages) + totalImages) % totalImages;
+    setLightboxSlideIndex(normalized);
+  }, []);
+
+  const onLightboxTouchStart = React.useCallback((clientX: number) => {
+    lightboxTouchStartX.current = clientX;
+  }, []);
+
+  const onLightboxTouchEnd = React.useCallback(
+    (clientX: number, totalImages: number) => {
+      if (typeof lightboxTouchStartX.current !== "number") {
+        return;
+      }
+
+      const deltaX = lightboxTouchStartX.current - clientX;
+      const swipeThreshold = 40;
+
+      if (Math.abs(deltaX) < swipeThreshold) {
+        return;
+      }
+
+      if (deltaX > 0) {
+        goToLightboxSlide(lightboxSlideIndex + 1, totalImages);
+      } else {
+        goToLightboxSlide(lightboxSlideIndex - 1, totalImages);
+      }
+    },
+    [goToLightboxSlide, lightboxSlideIndex],
   );
 
   // compute filtered list based on current filter
@@ -330,7 +379,8 @@ export default function Projects() {
                       key={`${project.title}-${activeSlide}`}
                       src={activeImage}
                       alt={project.title}
-                      className="gallery-image h-[500px] w-full object-cover"
+                      className="gallery-image h-[500px] w-full cursor-zoom-in object-cover"
+                      onClick={() => openLightbox(index, activeSlide)}
                       whileHover={{ scale: 1.05 }}
                       transition={{ duration: 0.5 }}
                       initial={{ opacity: 0.7 }}
@@ -452,10 +502,97 @@ export default function Projects() {
                   </motion.div>
                 </motion.div>
               </motion.div>
-            );})}
+            );
+            })}
           </div>
         </div>
       </section>
+
+      {lightboxProjectIndex !== null && filteredProjects[lightboxProjectIndex] ? (() => {
+        const project = filteredProjects[lightboxProjectIndex];
+        const totalImages = project.images.length;
+        const currentImage = project.images[lightboxSlideIndex] ?? project.images[0] ?? "";
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-6"
+            onClick={closeLightbox}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                closeLightbox();
+              }
+              if (event.key === "ArrowLeft") {
+                goToLightboxSlide(lightboxSlideIndex - 1, totalImages);
+              }
+              if (event.key === "ArrowRight") {
+                goToLightboxSlide(lightboxSlideIndex + 1, totalImages);
+              }
+            }}
+            role="presentation"
+            tabIndex={-1}
+          >
+            <div className="relative flex w-full max-w-6xl flex-col gap-4" onClick={(event) => event.stopPropagation()}>
+              <button
+                type="button"
+                aria-label="Close image viewer"
+                onClick={closeLightbox}
+                className="absolute -top-2 right-0 z-10 rounded-full bg-white/90 px-4 py-2 text-[#072c3c] shadow-lg transition hover:bg-white"
+              >
+                Close
+              </button>
+
+              <div className="relative overflow-hidden rounded-2xl bg-[#0f1720] shadow-2xl">
+                <div
+                  className="flex items-center justify-center"
+                  onTouchStart={(event) => onLightboxTouchStart(event.touches[0].clientX)}
+                  onTouchEnd={(event) => onLightboxTouchEnd(event.changedTouches[0].clientX, totalImages)}
+                >
+                  <img
+                    src={currentImage}
+                    alt={project.title}
+                    className="max-h-[80vh] w-full object-contain"
+                  />
+                </div>
+
+                {totalImages > 1 ? (
+                  <>
+                    <button
+                      type="button"
+                      aria-label={`Previous image for ${project.title}`}
+                      onClick={() => goToLightboxSlide(lightboxSlideIndex - 1, totalImages)}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 px-4 py-3 text-2xl leading-none text-[#072c3c] shadow-lg transition hover:bg-white"
+                    >
+                      &lt;
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Next image for ${project.title}`}
+                      onClick={() => goToLightboxSlide(lightboxSlideIndex + 1, totalImages)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 px-4 py-3 text-2xl leading-none text-[#072c3c] shadow-lg transition hover:bg-white"
+                    >
+                      &gt;
+                    </button>
+
+                    <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/45 px-4 py-2 backdrop-blur-sm">
+                      {project.images.map((_, imageIndex) => (
+                        <button
+                          key={`${project.title}-lightbox-dot-${imageIndex}`}
+                          type="button"
+                          aria-label={`Go to image ${imageIndex + 1} for ${project.title}`}
+                          onClick={() => goToLightboxSlide(imageIndex, totalImages)}
+                          className={`h-2.5 w-2.5 rounded-full transition ${
+                            lightboxSlideIndex === imageIndex ? "bg-white" : "bg-white/50 hover:bg-white/80"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        );
+      })() : null}
 
       {/* Process Section */}
       <section className="bg-[#f9fafb] py-20">
