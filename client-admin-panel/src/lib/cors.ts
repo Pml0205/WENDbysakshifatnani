@@ -5,9 +5,13 @@ const defaultAllowedOrigins = [
   'http://localhost:3000',
 ];
 
-const configuredOrigins = (process.env.CORS_ORIGIN ?? '')
+const runtimeProcess = (globalThis as typeof globalThis & {
+  process?: { env?: Record<string, string | undefined> };
+}).process;
+
+const configuredOrigins = (runtimeProcess?.env?.CORS_ORIGIN ?? '')
   .split(',')
-  .map((origin) => origin.trim())
+  .map((origin: string) => origin.trim())
   .filter(Boolean);
 
 const allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : defaultAllowedOrigins;
